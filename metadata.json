@@ -1,0 +1,5 @@
+{
+  "name": "Naročanje Malic",
+  "description": "A simple web application for daily meal ordering, integrated with Google Sheets. Admins can set the daily menu, and users can place their orders, which are then recorded.",
+  "requestFramePermissions": []
+}
