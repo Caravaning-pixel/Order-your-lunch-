@@ -268,6 +268,13 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
             />
           </div>
           <button
+            type="button"
+            onClick={() => window.open('https://www.gostilna-cilka.com/Malice', '_blank', 'noopener,noreferrer')}
+            className="w-full flex justify-center items-center bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          >
+            Cilka Meni
+          </button>
+          <button
             type="submit"
             disabled={isPublishing}
             className="w-full flex justify-center items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 transition-colors"
