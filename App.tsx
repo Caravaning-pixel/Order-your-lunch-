@@ -4,6 +4,7 @@ import UserView from './components/UserView';
 import Header from './components/Header';
 import Login from './components/Login';
 import PinModal from './components/PinModal';
+import GuestNameModal from './components/GuestNameModal';
 import type { Meal, Employee } from './types';
 import { View } from './types';
 import { PERMANENT_MEALS, INITIAL_EMPLOYEES } from './constants';
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [pinError, setPinError] = useState<string>('');
+  const [isGuestModalOpen, setIsGuestModalOpen] = useState<boolean>(false);
 
   const handleLogin = (userId: string) => {
     const user = employees.find(emp => emp.id === userId);
@@ -53,6 +55,23 @@ const App: React.FC = () => {
     } else {
       setPinError('Napačna koda PIN. Poskusite znova.');
     }
+  };
+
+  const handleGuestLoginRequest = () => {
+    setIsGuestModalOpen(true);
+  };
+
+  const handleGuestNameSubmit = (name: string) => {
+    const guestUser: Employee = {
+      id: `guest-${Date.now()}`,
+      name: name.trim(),
+      email: '', // Guest has no email
+      role: 'user',
+    };
+    setCurrentUser(guestUser);
+    setView(View.User);
+    setIsAdminAuthenticated(false);
+    setIsGuestModalOpen(false);
   };
 
   const handlePublishMenu = useCallback((malica1: string, malica2: string) => {
@@ -103,7 +122,20 @@ const App: React.FC = () => {
   };
 
   if (!currentUser) {
-    return <Login employees={employees} onLogin={handleLogin} />;
+    return (
+      <>
+        <Login 
+          employees={employees} 
+          onLogin={handleLogin} 
+          onGuestLogin={handleGuestLoginRequest}
+        />
+        <GuestNameModal
+          isOpen={isGuestModalOpen}
+          onClose={() => setIsGuestModalOpen(false)}
+          onSubmit={handleGuestNameSubmit}
+        />
+      </>
+    );
   }
 
   return (
@@ -140,7 +172,7 @@ const App: React.FC = () => {
         error={pinError}
       />
       <footer className="text-center py-4 text-slate-500 text-sm">
-        <p>&copy; 2024 Naročanje Malic. Vse pravice pridržane.</p>
+        <p>&copy; 2025 Lačen si full drugačen</p>
       </footer>
     </div>
   );

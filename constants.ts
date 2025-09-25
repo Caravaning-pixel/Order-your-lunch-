@@ -15,5 +15,5 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-4', name: 'Jakob', email: 'jan.kovac@example.com', role: 'user' },
   { id: 'emp-5', name: 'Janja', email: 'nina.zupancic@example.com', role: 'user' },
   { id: 'emp-6', name: 'Lenča', email: 'marko.krajnc@example.com', role: 'user' },
-  { id: 'emp-8', name: 'monika', email: 'monika@example.com', role: 'user' },
+  { id: 'emp-8', name: 'Monika', email: 'monika@example.com', role: 'user' },
 ];
