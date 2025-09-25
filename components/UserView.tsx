@@ -21,6 +21,7 @@ const UserView: React.FC<UserViewProps> = ({ menu, isMenuPublished, employees, c
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [todaysOrders, setTodaysOrders] = useState<Order[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -31,6 +32,7 @@ const UserView: React.FC<UserViewProps> = ({ menu, isMenuPublished, employees, c
     try {
       const result = await getOrderHistory();
       if (result.success) {
+        setAllOrders(result.orders); // Store all orders for monthly count
         const today = new Date().toISOString().split('T')[0];
         const filteredOrders = result.orders.filter(order => order.date === today);
         setTodaysOrders(filteredOrders);
@@ -180,7 +182,8 @@ const UserView: React.FC<UserViewProps> = ({ menu, isMenuPublished, employees, c
         </form>
       </div>
       <DailyOrderSummary 
-        orders={todaysOrders}
+        todaysOrders={todaysOrders}
+        allOrders={allOrders}
         isLoading={isHistoryLoading}
         error={historyError}
       />

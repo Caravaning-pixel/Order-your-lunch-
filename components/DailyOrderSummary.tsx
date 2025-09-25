@@ -1,8 +1,10 @@
-import React from 'react';
+
+import React, { useMemo } from 'react';
 import type { Order } from '../types';
 
 interface DailyOrderSummaryProps {
-  orders: Order[];
+  todaysOrders: Order[];
+  allOrders: Order[];
   isLoading: boolean;
   error: string | null;
 }
@@ -14,8 +16,23 @@ interface Summary {
   };
 }
 
-const DailyOrderSummary: React.FC<DailyOrderSummaryProps> = ({ orders, isLoading, error }) => {
-  const summary = orders.reduce((acc, order) => {
+const DailyOrderSummary: React.FC<DailyOrderSummaryProps> = ({ todaysOrders, allOrders, isLoading, error }) => {
+  const monthlyCounts = useMemo(() => {
+    const counts: { [user: string]: number } = {};
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    for (const order of allOrders) {
+      const orderDate = new Date(order.date);
+      if (orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear) {
+        counts[order.user] = (counts[order.user] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [allOrders]);
+  
+  const summary = todaysOrders.reduce((acc, order) => {
     if (!acc[order.meal]) {
       acc[order.meal] = { count: 0, users: [] };
     }
@@ -24,7 +41,7 @@ const DailyOrderSummary: React.FC<DailyOrderSummaryProps> = ({ orders, isLoading
     return acc;
   }, {} as Summary);
 
-  const totalOrders = orders.length;
+  const totalOrders = todaysOrders.length;
   // FIX: Explicitly cast the result of Object.entries to fix type inference for summary data.
   const sortedSummary = (Object.entries(summary) as [string, Summary[string]][]).sort(([, a], [, b]) => b.count - a.count);
 
@@ -65,7 +82,7 @@ const DailyOrderSummary: React.FC<DailyOrderSummaryProps> = ({ orders, isLoading
                 ></div>
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                <span className="font-semibold">Naročili:</span> {data.users.join(', ')}
+                <span className="font-semibold">Naročili:</span> {data.users.map(user => `${user} (${monthlyCounts[user] || 0})`).join(', ')}
               </div>
             </div>
           );
