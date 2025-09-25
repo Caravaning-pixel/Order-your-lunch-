@@ -97,8 +97,32 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, isLoading, error, o
                 const isEditingThisRow = editingOrder?.id === order.id;
                 return (
                     <tr key={order.id} className={isEditingThisRow ? 'bg-blue-50' : ''}>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600 align-top">{order.date}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-800 align-top">{order.user}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600 align-top">
+                        {isEditingThisRow ? (
+                        <input
+                            type="date"
+                            name="date"
+                            value={editingOrder.date}
+                            onChange={handleInputChange}
+                            className="w-full px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        ) : (
+                        order.date
+                        )}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-800 align-top">
+                        {isEditingThisRow ? (
+                        <input
+                            type="text"
+                            name="user"
+                            value={editingOrder.user}
+                            onChange={handleInputChange}
+                            className="w-full px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        ) : (
+                        order.user
+                        )}
+                    </td>
                     <td className="px-4 py-4 text-sm text-slate-600 align-top">
                         {isEditingThisRow ? (
                         <input
