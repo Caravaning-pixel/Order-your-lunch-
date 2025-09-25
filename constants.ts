@@ -8,7 +8,7 @@ export const PERMANENT_MEALS: Meal[] = [
 ];
 
 export const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 'emp-1', name: 'Davor', email: 'ana.novak@example.com', role: 'admin', pin: '1234' },
+  { id: 'emp-1', name: 'Davor', email: 'ana.novak@example.com', role: 'admin', pin: '8520' },
   { id: 'emp-7', name: 'Anja', email: 'anja@example.com', role: 'admin', pin: '8520' },
   { id: 'emp-2', name: 'Božo', email: 'luka.horvat@example.com', role: 'user' },
   { id: 'emp-3', name: 'Klemen', email: 'eva.kovacic@example.com', role: 'user' },

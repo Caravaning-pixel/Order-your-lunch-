@@ -71,6 +71,47 @@ export const getOrderHistory = async (): Promise<{ success: boolean, orders: Ord
 };
 
 /**
+ * Updates a specific order in Local Storage.
+ */
+export const updateOrder = async (updatedOrder: Order): Promise<{ success: boolean }> => {
+    console.log('Updating order in Local Storage...', updatedOrder);
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY / 2));
+
+    const orderIndex = mockOrders.findIndex(o => o.id === updatedOrder.id);
+
+    if (orderIndex > -1) {
+        mockOrders[orderIndex] = updatedOrder;
+        saveOrdersToStorage(mockOrders);
+        console.log('Order updated successfully (simulated).');
+        return { success: true };
+    } else {
+        console.error('Order not found for update (simulated).');
+        return { success: false };
+    }
+};
+
+/**
+ * Deletes a specific order from Local Storage.
+ */
+export const deleteOrder = async (orderId: string): Promise<{ success: boolean }> => {
+    console.log('Deleting order from Local Storage...', orderId);
+    await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY / 2));
+
+    const initialLength = mockOrders.length;
+    mockOrders = mockOrders.filter(o => o.id !== orderId);
+
+    if (mockOrders.length < initialLength) {
+        saveOrdersToStorage(mockOrders);
+        console.log('Order deleted successfully (simulated).');
+        return { success: true };
+    } else {
+        console.error('Order not found for deletion (simulated).');
+        return { success: false };
+    }
+};
+
+
+/**
  * Clears all order history from memory and Local Storage.
  */
 export const clearAllOrders = async (): Promise<{ success: boolean }> => {

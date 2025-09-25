@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { PERMANENT_MEALS } from '../constants';
-import { publishMenu, getOrderHistory, clearAllOrders } from '../services/googleSheetsService';
+import { publishMenu, getOrderHistory, clearAllOrders, updateOrder, deleteOrder } from '../services/googleSheetsService';
 import Spinner from './Spinner';
 import Alert from './Alert';
 import UserManagement from './UserManagement';
@@ -210,6 +210,32 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
     }
   };
 
+  const handleUpdateOrder = async (orderToUpdate: Order): Promise<boolean> => {
+    setFeedback(null);
+    const result = await updateOrder(orderToUpdate);
+    if (result.success) {
+        setFeedback({ type: 'success', message: 'Naročilo je bilo uspešno posodobljeno.' });
+        await fetchHistory(); // Refresh data
+        return true;
+    } else {
+        setFeedback({ type: 'error', message: 'Napaka pri posodabljanju naročila.' });
+        return false;
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string): Promise<boolean> => {
+    setFeedback(null);
+    const result = await deleteOrder(orderId);
+    if (result.success) {
+        setFeedback({ type: 'success', message: 'Naročilo je bilo uspešno izbrisano.' });
+        await fetchHistory(); // Refresh data
+        return true;
+    } else {
+        setFeedback({ type: 'error', message: 'Napaka pri brisanju naročila.' });
+        return false;
+    }
+  };
+
   const clearFeedback = () => setFeedback(null);
 
   return (
@@ -265,6 +291,8 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
         isLoading={isHistoryLoading}
         error={historyError}
         onRefresh={fetchHistory}
+        onUpdateOrder={handleUpdateOrder}
+        onDeleteOrder={handleDeleteOrder}
       />
 
       <div className="bg-white p-6 rounded-lg shadow-md">
