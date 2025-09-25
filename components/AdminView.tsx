@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { PERMANENT_MEALS } from '../constants';
-import { publishMenu, sendMonthlyReport, getOrderHistory } from '../services/googleSheetsService';
+import { publishMenu, sendMonthlyReport, getOrderHistory, exportOrdersToSheet } from '../services/googleSheetsService';
 import Spinner from './Spinner';
 import Alert from './Alert';
 import UserManagement from './UserManagement';
@@ -21,6 +21,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
   const [malica2, setMalica2] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSendingReport, setIsSendingReport] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
@@ -78,6 +79,27 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
       setFeedback({ type: 'success', message: 'Mesečno poročilo je bilo uspešno poslano!' });
     } else {
       setFeedback({ type: 'error', message: 'Napaka pri pošiljanju poročila. Poskusite znova.' });
+    }
+  };
+
+  const handleExport = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysOrders = orderHistory.filter(order => order.date === today);
+
+    if (todaysOrders.length === 0) {
+      setFeedback({ type: 'error', message: 'Danes ni nobenih naročil za izvoz.' });
+      return;
+    }
+
+    setIsExporting(true);
+    setFeedback(null);
+    const result = await exportOrdersToSheet(todaysOrders);
+    setIsExporting(false);
+    
+    if (result.success) {
+      setFeedback({ type: 'success', message: 'Današnja naročila so bila uspešno izvožena v Google Sheets!' });
+    } else {
+      setFeedback({ type: 'error', message: 'Napaka pri izvozu naročil. Poskusite znova.' });
     }
   };
   
@@ -143,6 +165,18 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
         <ul className="list-disc list-inside space-y-2 text-slate-600">
           {PERMANENT_MEALS.map(meal => <li key={meal.id}>{meal.name}</li>)}
         </ul>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-4 text-slate-700 border-b pb-2">Izvoz Podatkov</h2>
+        <p className="text-slate-600 mb-4">Izvozi vsa današnja naročila v nov Google Sheet z imenom "Malice - [današnji datum]". Stolpci bodo: Datum, Ime osebe, Malica.</p>
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="w-full flex justify-center items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-300 transition-colors"
+        >
+          {isExporting ? <Spinner /> : 'Izvozi Malice'}
+        </button>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">

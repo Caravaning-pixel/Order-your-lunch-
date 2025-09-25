@@ -85,6 +85,38 @@ export const sendMonthlyReport = async (): Promise<{ success: boolean }> => {
 };
 
 /**
+ * Simulates exporting daily orders to a new Google Sheet.
+ */
+export const exportOrdersToSheet = async (orders: Order[]): Promise<{ success: boolean }> => {
+  const today = new Date().toISOString().split('T')[0];
+  const sheetName = `Malice - ${today}`;
+  console.log(`Simulating exporting ${orders.length} orders to Google Sheet: "${sheetName}"`);
+
+  // Transform data to match the required columns: Datum, Ime osebe, Malica
+  const exportData = orders.map(order => ({
+    'Datum': order.date,
+    'Ime osebe': order.user,
+    'Malica': order.meal,
+  }));
+
+  console.log('Data to be exported:', exportData);
+
+  // In a real app:
+  // const response = await fetch('YOUR_APPS_SCRIPT_URL?action=exportOrders', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ sheetName, data: exportData }),
+  // });
+  // if (!response.ok) return { success: false };
+  // const result = await response.json();
+  // return { success: result.status === 'success' };
+  
+  await new Promise(resolve => setTimeout(resolve, MOCK_API_DELAY * 1.5));
+  console.log('Orders exported successfully (simulated).');
+  return { success: true };
+};
+
+/**
  * Simulates adding a new employee.
  */
 export const addEmployee = async (name: string, email: string, role: 'admin' | 'user', pin?: string): Promise<{ success: boolean, newEmployee?: Employee }> => {

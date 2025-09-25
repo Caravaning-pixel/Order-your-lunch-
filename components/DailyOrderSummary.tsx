@@ -25,7 +25,8 @@ const DailyOrderSummary: React.FC<DailyOrderSummaryProps> = ({ orders, isLoading
   }, {} as Summary);
 
   const totalOrders = orders.length;
-  const sortedSummary = Object.entries(summary).sort(([, a], [, b]) => b.count - a.count);
+  // FIX: Explicitly cast the result of Object.entries to fix type inference for summary data.
+  const sortedSummary = (Object.entries(summary) as [string, Summary[string]][]).sort(([, a], [, b]) => b.count - a.count);
 
   const renderContent = () => {
     if (isLoading) {
