@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { PERMANENT_MEALS } from '../constants';
-import { publishMenu, sendMonthlyReport, getOrderHistory, exportOrdersToSheet } from '../services/googleSheetsService';
+import { publishMenu, getOrderHistory, clearAllOrders } from '../services/googleSheetsService';
 import Spinner from './Spinner';
 import Alert from './Alert';
 import UserManagement from './UserManagement';
@@ -20,8 +20,9 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
   const [malica1, setMalica1] = useState('');
   const [malica2, setMalica2] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSendingReport, setIsSendingReport] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingDaily, setIsExportingDaily] = useState(false);
+  const [isExportingMonthly, setIsExportingMonthly] = useState(false);
+  const [isClearingHistory, setIsClearingHistory] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
@@ -69,20 +70,8 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
       setFeedback({ type: 'error', message: 'Napaka pri objavi menija. Poskusite znova.' });
     }
   };
-
-  const handleSendReport = async () => {
-    setIsSendingReport(true);
-    setFeedback(null);
-    const result = await sendMonthlyReport();
-    setIsSendingReport(false);
-    if (result.success) {
-      setFeedback({ type: 'success', message: 'Mesečno poročilo je bilo uspešno poslano!' });
-    } else {
-      setFeedback({ type: 'error', message: 'Napaka pri pošiljanju poročila. Poskusite znova.' });
-    }
-  };
-
-  const handleExport = async () => {
+  
+  const handleDailyExport = async () => {
     const today = new Date().toISOString().split('T')[0];
     const todaysOrders = orderHistory.filter(order => order.date === today);
 
@@ -91,18 +80,136 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
       return;
     }
 
-    setIsExporting(true);
+    setIsExportingDaily(true);
     setFeedback(null);
-    const result = await exportOrdersToSheet(todaysOrders);
-    setIsExporting(false);
     
-    if (result.success) {
-      setFeedback({ type: 'success', message: 'Današnja naročila so bila uspešno izvožena v Google Sheets!' });
-    } else {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    try {
+      const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>\n<Narocila datum="${today}">\n`;
+      const xmlFooter = '</Narocila>';
+      
+      const escapeXml = (text: string | undefined) => {
+        if (!text) return '';
+        return text.replace(/&/g, '&amp;')
+                   .replace(/</g, '&lt;')
+                   .replace(/>/g, '&gt;')
+                   .replace(/"/g, '&quot;')
+                   .replace(/'/g, '&apos;');
+      };
+
+      const xmlBody = todaysOrders.map(order => 
+        `  <Narocilo>\n` +
+        `    <Uporabnik>${escapeXml(order.user)}</Uporabnik>\n` +
+        `    <Malica>${escapeXml(order.meal)}</Malica>\n` +
+        `    <Juha>${order.hasSoup ? 'Da' : 'Ne'}</Juha>\n` +
+        `    <Opomba>${escapeXml(order.note)}</Opomba>\n` +
+        `  </Narocilo>`
+      ).join('\n');
+      
+      const xmlContent = xmlHeader + xmlBody + '\n' + xmlFooter;
+
+      const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `malice-${today}.xml`);
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setFeedback({ type: 'success', message: `Uspešno izvoženo ${todaysOrders.length} naročil v datoteko malice-${today}.xml!` });
+
+    } catch (error) {
+      console.error("Daily export failed:", error);
       setFeedback({ type: 'error', message: 'Napaka pri izvozu naročil. Poskusite znova.' });
+    } finally {
+      setIsExportingDaily(false);
+    }
+  };
+
+  const handleMonthlyExport = async () => {
+    if (orderHistory.length === 0) {
+        setFeedback({ type: 'error', message: 'Ni shranjenih naročil za izvoz.' });
+        return;
+    }
+    
+    setIsExportingMonthly(true);
+    setFeedback(null);
+    await new Promise(resolve => setTimeout(resolve, 500)); // UX delay
+
+    try {
+        const headers = "Datum,Uporabnik,Malica,Juha,Opomba";
+        
+        const escapeCsv = (field: string | undefined | boolean) => {
+            if (field === undefined || field === null) return '';
+            let str = String(field);
+            if (typeof field === 'boolean') str = field ? 'Da' : 'Ne';
+
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        const csvRows = orderHistory
+            .slice() 
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+            .map(order => 
+                [
+                    escapeCsv(order.date),
+                    escapeCsv(order.user),
+                    escapeCsv(order.meal),
+                    escapeCsv(order.hasSoup),
+                    escapeCsv(order.note),
+                ].join(',')
+            );
+
+        const csvContent = [headers, ...csvRows].join('\n');
+        
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const month = new Date().toLocaleString('sl-SI', { month: 'long' });
+        const year = new Date().getFullYear();
+        link.href = url;
+        link.setAttribute('download', `Malice-${month}-${year}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        setFeedback({ type: 'success', message: `Uspešno izvoženo ${orderHistory.length} naročil. Priporočamo, da sedaj počistite zgodovino.` });
+    } catch (error) {
+        console.error("Monthly export failed:", error);
+        setFeedback({ type: 'error', message: 'Napaka pri izvozu mesečnega poročila.' });
+    } finally {
+        setIsExportingMonthly(false);
     }
   };
   
+  const handleClearHistory = async () => {
+    if (orderHistory.length === 0) {
+        setFeedback({ type: 'error', message: 'Zgodovina je že prazna.' });
+        return;
+    }
+    if (window.confirm(`Ali ste prepričani, da želite trajno izbrisati vseh ${orderHistory.length} shranjenih naročil? Tega dejanja ni mogoče razveljaviti.`)) {
+        setIsClearingHistory(true);
+        setFeedback(null);
+        const result = await clearAllOrders();
+        if (result.success) {
+            setFeedback({ type: 'success', message: 'Zgodovina naročil je bila uspešno počiščena.' });
+            await fetchHistory();
+        } else {
+            setFeedback({ type: 'error', message: 'Napaka pri brisanju zgodovine.' });
+        }
+        setIsClearingHistory(false);
+    }
+  };
+
   const clearFeedback = () => setFeedback(null);
 
   return (
@@ -168,27 +275,36 @@ const AdminView: React.FC<AdminViewProps> = ({ onPublishMenu, employees, onAddEm
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-slate-700 border-b pb-2">Izvoz Podatkov</h2>
-        <p className="text-slate-600 mb-4">Izvozi vsa današnja naročila v nov Google Sheet z imenom "Malice - [današnji datum]". Stolpci bodo: Datum, Ime osebe, Malica.</p>
+        <h2 className="text-2xl font-bold mb-4 text-slate-700 border-b pb-2">Dnevni Izvoz (Varnostna Kopija)</h2>
+        <p className="text-slate-600 mb-4">S klikom na gumb boste prenesli XML datoteko z vsemi <strong>današnjimi</strong> naročili. To je priporočljivo narediti vsak dan kot varnostno kopijo.</p>
         <button
-          onClick={handleExport}
-          disabled={isExporting}
+          onClick={handleDailyExport}
+          disabled={isExportingDaily}
           className="w-full flex justify-center items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-300 transition-colors"
         >
-          {isExporting ? <Spinner /> : 'Izvozi Malice'}
+          {isExportingDaily ? <Spinner /> : 'Izvozi Današnja Naročila (XML)'}
         </button>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-slate-700 border-b pb-2">Mesečno Poročilo</h2>
-        <p className="text-slate-600 mb-4">S pritiskom na gumb boste sprožili pošiljanje mesečnega poročila o naročilih vsem zaposlenim.</p>
-        <button
-          onClick={handleSendReport}
-          disabled={isSendingReport}
-          className="w-full flex justify-center items-center bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:bg-emerald-300 transition-colors"
-        >
-          {isSendingReport ? <Spinner /> : 'Pošlji Mesečno Poročilo'}
-        </button>
+        <h2 className="text-2xl font-bold mb-4 text-slate-700 border-b pb-2">Mesečni Obračun in Arhiviranje</h2>
+        <p className="text-slate-600 mb-4">Ob koncu meseca izvozite vsa zbrana naročila v CSV datoteko za lažji obračun. Po uspešnem izvozu in preverjanju podatkov lahko počistite zgodovino za nov mesec.</p>
+        <div className="flex flex-col sm:flex-row gap-4">
+            <button
+                onClick={handleMonthlyExport}
+                disabled={isExportingMonthly || isClearingHistory}
+                className="flex-1 flex justify-center items-center bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:bg-emerald-300 transition-colors"
+            >
+                {isExportingMonthly ? <Spinner /> : 'Izvozi Vsa Naročila (CSV)'}
+            </button>
+            <button
+                onClick={handleClearHistory}
+                disabled={isClearingHistory || isExportingMonthly}
+                className="flex-1 flex justify-center items-center bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-300 transition-colors"
+            >
+                {isClearingHistory ? <Spinner /> : 'Počisti Zgodovino Naročil'}
+            </button>
+        </div>
       </div>
     </div>
   );
